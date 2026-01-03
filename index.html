@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Calvão Run - Versão Final</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; position: fixed; width: 100%; height: 100%; }
+        canvas { display: block; background: #87CEEB; }
+
+        /* Placar no topo */
+        #placar-oficial { 
+            position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.8); 
+            padding: 12px; border-radius: 10px; z-index: 100; font-size: 18px; font-weight: bold; 
+            pointer-events: none; border: 2px solid #fff;
+        }
+
+        /* Estilo base das telas de fim de jogo */
+        .tela {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center; z-index: 1000;
+        }
+
+        /* Texto de Vitória (Verde) */
+        .vitoria-texto { color: #2ecc71; font-size: 32px; font-weight: bold; margin-bottom: 10px; }
+        
+        /* Texto de Derrota (Vermelho) */
+        .derrota-texto { color: #e74c3c; font-size: 32px; font-weight: bold; margin-bottom: 10px; }
+
+        .sub-texto { color: white; font-size: 18px; margin-bottom: 25px; max-width: 80%; }
+
+        /* Botão Reiniciar */
+        .btn-reiniciar {
+            padding: 15px 40px; font-size: 20px; font-weight: bold; color: white;
+            background: #3498db; border: none; border-radius: 50px; cursor: pointer;
+            box-shadow: 0 5px #2980b9; transition: 0.2s;
+        }
+        .btn-reiniciar:active { box-shadow: 0 2px #2980b9; transform: translateY(3px); }
+    </style>
+</head>
+<body>
+
+    <div id="placar-oficial">
+        Vidas: <span id="v-real">❤️❤️❤️❤️❤️</span><br>
+        Progresso: <span id="p-real">0</span>%
+    </div>
+
+    <div id="tela-vitoria" class="tela">
+        <div class="vitoria-texto">🏆 VITÓRIA 🏆</div>
+        <p class="sub-texto">Parabéns! Você chegou a tempo para a entrevista e conseguiu o emprego dos seus sonhos!</p>
+        <button class="btn-reiniciar" onclick="location.reload()">JOGAR DE NOVO</button>
+    </div>
+
+    <div id="tela-derrota" class="tela">
+        <div class="derrota-texto">GAME OVER</div>
+        <p class="sub-texto">Não foi dessa vez! Você acabou perdendo a entrevista. Tente ser mais rápido no pulo!</p>
+        <button class="btn-reiniciar" onclick="location.reload()">reniciar</button>
+    </div>
+
+    <canvas id="g"></canvas>
+
+    <script>
+        const canvas = document.getElementById('g');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const img = { c: new Image(), s: new Image(), e: new Image(), m: new Image(), p: new Image(), pr: new Image() };
+        let carregadas = 0;
+        const iniciarSePronto = () => { carregadas++; if(carregadas >= 6) iniciar(); };
+
+        img.c.onload = img.s.onload = img.e.onload = img.m.onload = img.p.onload = img.pr.onload = iniciarSePronto;
+        img.c.onerror = img.s.onerror = img.e.onerror = img.m.onerror = img.p.onerror = img.pr.onerror = iniciarSePronto;
+
+        // Caminhos das imagens
+        img.c.src = 'calvao.png'; img.s.src = 'cenario.png'; img.e.src = 'espinho.png';
+        img.m.src = 'montanha.png'; img.p.src = 'power.png'; img.pr.src = 'predioentrevista.png';
+
+        let ativo = false, vel = 6, vidas = 5, prog = 0, inv = false;
+        let player = { x: 50, y: canvas.height - 150, w: 75, h: 75, dy: 0, chao: false };
+        let obs = [], itens = [];
+
+        function iniciar() { if(ativo) return; ativo = true; spawn(); loop(); }
+
+        function pular() {
+            if (!ativo) return;
+            if (player.chao) { player.dy = -17; player.chao = false; }
+        }
+        window.addEventListener('pointerdown', (e) => { 
+            if(ativo) { e.preventDefault(); pular(); }
+        }, {passive: false});
+
+        function spawn() {
+            if (!ativo) return;
+            if (prog < 95 && obs.length < 4) {
+                let tipo = Math.random() > 0.5 ? 'e' : 'm';
+                obs.push({ x: canvas.width + 100, y: canvas.height - 140, w: 70, h: 70, t: tipo });
+            }
+            if (Math.random() > 0.8 && itens.length < 1) {
+                itens.push({ x: canvas.width + 200, y: canvas.height - 250, w: 50, h: 50 });
+            }
+            setTimeout(spawn, 1300 + Math.random() * 1200);
+        }
+
+        function loop() {
+            if (!ativo) return;
+
+            player.dy += 0.8;
+            player.y += player.dy;
+            if (player.y > canvas.height - 140) { player.y = canvas.height - 140; player.dy = 0; player.chao = true; }
+
+            // Tempo de jogo: aprox 1 minuto e 15 segundos
+            prog += 0.0222; 
+            document.getElementById('p-real').innerText = Math.floor(Math.min(prog, 100));
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if(img.s.complete) ctx.drawImage(img.s, 0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#5d4037"; ctx.fillRect(0, canvas.height - 65, canvas.width, 65);
+
+            if (prog > 95 && img.pr.complete) {
+                let px = canvas.width - ((prog - 95) * 150);
+                ctx.drawImage(img.pr, px, canvas.height - 380, 250, 320);
+            }
+
+            if (inv) { ctx.globalAlpha = 0.5; ctx.fillStyle = "cyan"; ctx.fillRect(player.x, player.y, player.w, player.h); ctx.globalAlpha = 1.0; }
+            if(img.c.complete) ctx.drawImage(img.c, player.x, player.y, player.w, player.h);
+
+            for (let i = obs.length - 1; i >= 0; i--) {
+                let o = obs[i]; o.x -= vel;
+                let s = o.t === 'e' ? img.e : img.m;
+                if(s.complete) ctx.drawImage(s, o.x, o.y, o.w, o.h);
+
+                if (player.x < o.x + o.w - 15 && player.x + player.w > o.x + 15 && player.y < o.y + o.h && player.y + player.h > o.y) {
+                    if (o.t === 'e' && !inv) {
+                        vidas--;
+                        obs.splice(i, 1);
+                        document.getElementById('v-real').innerText = "❤️".repeat(Math.max(0, vidas));
+                        if (vidas <= 0) { 
+                            ativo = false; 
+                            document.getElementById('tela-derrota').style.display = 'flex'; 
+                        }
+                    } else if (o.t === 'm') {
+                        vel = 3; setTimeout(() => { vel = inv ? 14 : 6; }, 400);
+                    }
+                }
+                if (o.x < -100) obs.splice(i, 1);
+            }
+
+            for (let i = itens.length - 1; i >= 0; i--) {
+                let it = itens[i]; it.x -= vel;
+                if(img.p.complete) ctx.drawImage(img.p, it.x, it.y, it.w, it.h);
+                if (Math.abs(player.x - it.x) < 50 && Math.abs(player.y - it.y) < 50) {
+                    itens.splice(i, 1); inv = true; vel = 14;
+                    setTimeout(() => { inv = false; vel = 6; }, 6000);
+                }
+            }
+
+            if (prog >= 100) { 
+                ativo = false; 
+                document.getElementById('tela-vitoria').style.display = 'flex'; 
+            }
+            requestAnimationFrame(loop);
+        }
+    </script>
+</body>
+</html>
